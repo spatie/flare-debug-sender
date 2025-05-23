@@ -159,6 +159,9 @@ class FlareDebugSender implements Sender
             if ($this->replaceTracingIds) {
                 $spans[$i]['spanId'] = $mappedSpanIds[$span['spanId']] ?? $spans[$i]['spanId'];
                 $spans[$i]['parentSpanId'] = $mappedSpanIds[$span['parentSpanId']] ?? $spans[$i]['parentSpanId'];
+
+                $spans[$spans[$i]['spanId']] = $spans[$i];
+                unset($spans[$i]);
             }
         }
 
