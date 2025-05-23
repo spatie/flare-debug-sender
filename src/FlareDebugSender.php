@@ -182,7 +182,7 @@ class FlareDebugSender implements Sender
                 $cleaned[$spans[0]] = $type;
             } else {
                 foreach ($spans as $i => $spanId) {
-                    $cleaned[$spanId] = 'type_'.($i + 1);
+                    $cleaned[$spanId] = $type.'_'.($i + 1);
                 }
             }
         }
