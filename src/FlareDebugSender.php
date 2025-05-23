@@ -199,8 +199,12 @@ class FlareDebugSender implements Sender
         array $payload,
         Closure $callback
     ): void {
-        (new CurlSender())->post($endpoint, $apiToken, $payload, function (Response $response) use ($callback) {
-            $callback($response);
-        });
+        try {
+            (new CurlSender())->post($endpoint, $apiToken, $payload, function (Response $response) use ($callback) {
+                $callback($response);
+            });
+        } catch (\Throwable $throwable) {
+            ray("Was unable to send to {$endpoint}")->red();
+        }
     }
 }
