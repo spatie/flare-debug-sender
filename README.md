@@ -35,6 +35,7 @@ Within your Flare config:
             'replace_tracing_ids' => true,
             'replace_tracing_times' => true,
             'print_full_payload' => false,
+            'print_endpoint' => false,
         ],
     ],
 ```
@@ -49,6 +50,7 @@ Open up Ray and start debugging!
 - `replace_tracing_ids`: If set to `true`, the span ids will be replaced with a more readable version.
 - `replace_tracing_times`: If set to `true`, the start and end times of the spans will be replaced with a more readable version.
 - `print_full_payload`: If set to `true`, the full payload will be printed to ray.
+- `print_endpoint`: If set to `true`, the endpoint will be printed to ray.
 
 ## Testing
 

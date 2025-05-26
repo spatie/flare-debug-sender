@@ -18,9 +18,12 @@ class FlareDebugSender implements Sender
 
     private bool $printFullPayload;
 
+    private bool $printEndpoint;
+
     private bool $replaceTracingIds;
 
     private bool $replaceTracingTimes;
+
 
     public function __construct(
         protected array $config = [
@@ -30,6 +33,7 @@ class FlareDebugSender implements Sender
             'replace_tracing_ids' => true,
             'replace_tracing_times' => true,
             'print_full_payload' => false,
+            'print_endpoint' => false,
         ]
     ) {
         $this->passthroughErrors = $this->config['passthrough_errors'] ?? false;
@@ -38,10 +42,15 @@ class FlareDebugSender implements Sender
         $this->replaceTracingIds = $this->config['replace_tracing_ids'] ?? true;
         $this->replaceTracingTimes = $this->config['replace_tracing_times'] ?? true;
         $this->printFullPayload = $this->config['print_full_payload'] ?? false;
+        $this->printEndpoint = $this->config['print_endpoint'] ?? false;
     }
 
     public function post(string $endpoint, string $apiToken, array $payload, Closure $callback): void
     {
+        if($this->printEndpoint) {
+            ray($endpoint)->label('endpoint');
+        }
+
         if ($this->printFullPayload) {
             ray($payload)->label($endpoint);
         }
@@ -204,7 +213,7 @@ class FlareDebugSender implements Sender
                 $callback($response);
             });
         } catch (\Throwable $throwable) {
-            ray("Was unable to send to {$endpoint}")->red();
+            ray("Was unable to send to {$endpoint} because: {$throwable->getMessage()}")->red();
         }
     }
 }
