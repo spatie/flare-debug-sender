@@ -36,6 +36,8 @@ Within your Flare config:
             'replace_tracing_times' => true,
             'print_full_payload' => false,
             'print_endpoint' => false,
+            'channel' => RayDebugChannel::class,
+            'channel_config' => [],
         ],
     ],
 ```
@@ -49,8 +51,31 @@ Open up Ray and start debugging!
 - `passthrough_zipkin`: If set to `true`, traces will be sent to a local Zipkin instance.
 - `replace_tracing_ids`: If set to `true`, the span ids will be replaced with a more readable version.
 - `replace_tracing_times`: If set to `true`, the start and end times of the spans will be replaced with a more readable version.
-- `print_full_payload`: If set to `true`, the full payload will be printed to ray.
-- `print_endpoint`: If set to `true`, the endpoint will be printed to ray.
+- `print_full_payload`: If set to `true`, the full payload will be printed.
+- `print_endpoint`: If set to `true`, the endpoint will be printed.
+- `channel`: The channel to use for debugging. Defaults to `RayDebugChannel`.
+- `channel_config`: The configuration for the channel. Defaults to an empty array.
+
+### Channels
+
+By default, the `RayDebugChannel` is used. We also provide a few other channels that you can use:
+
+#### LaravelLogDebugChannel
+
+Will write messages to the Laravel log. This is useful for debugging in a Laravel application.
+
+#### FileDebugChannel
+
+Will write messages to a file. This is useful for debugging in a non-Laravel application.
+
+By default, the file will be written to `flare-debug-sender.log` in the root of your project. You can change this by setting the `file` option in the channel configuration:
+
+```php
+    'channel' => FileDebugChannel::class,
+    'channel_config' => [
+        'file' => 'path/to/your/file.log',
+    ],
+```
 
 ## Testing
 

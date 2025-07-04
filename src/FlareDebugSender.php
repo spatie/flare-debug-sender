@@ -7,6 +7,9 @@ use Spatie\FlareClient\Senders\CurlSender;
 use Spatie\FlareClient\Senders\Sender;
 use Spatie\FlareClient\Senders\Support\Response;
 use Spatie\FlareClient\Support\OpenTelemetryAttributeMapper;
+use Spatie\FlareDebugSender\Channels\FlareDebugChannel;
+use Spatie\FlareDebugSender\Channels\RayDebugChannel;
+use Throwable;
 
 class FlareDebugSender implements Sender
 {
@@ -24,6 +27,7 @@ class FlareDebugSender implements Sender
 
     private bool $replaceTracingTimes;
 
+    private FlareDebugChannel $channel;
 
     public function __construct(
         protected array $config = [
@@ -34,6 +38,8 @@ class FlareDebugSender implements Sender
             'replace_tracing_times' => true,
             'print_full_payload' => false,
             'print_endpoint' => false,
+            'channel' => RayDebugChannel::class,
+            'channel_config' => [],
         ]
     ) {
         $this->passthroughErrors = $this->config['passthrough_errors'] ?? false;
@@ -43,16 +49,17 @@ class FlareDebugSender implements Sender
         $this->replaceTracingTimes = $this->config['replace_tracing_times'] ?? true;
         $this->printFullPayload = $this->config['print_full_payload'] ?? false;
         $this->printEndpoint = $this->config['print_endpoint'] ?? false;
+        $this->channel = new ($this->config['channel'] ?? RayDebugChannel::class)(...($this->config['channel_config'] ?? []));
     }
 
     public function post(string $endpoint, string $apiToken, array $payload, Closure $callback): void
     {
         if($this->printEndpoint) {
-            ray($endpoint)->label('endpoint');
+            $this->channel->message($endpoint, 'endpoint');
         }
 
         if ($this->printFullPayload) {
-            ray($payload)->label($endpoint);
+            $this->channel->message($endpoint, 'payload');
         }
 
         if (! array_key_exists('resourceSpans', $payload)) {
@@ -86,7 +93,7 @@ class FlareDebugSender implements Sender
         if ($this->passthroughZipkin) {
             $this->passThrough('127.0.0.1:4318/v1/traces', '', $payload, function (Response $response) {
                 if ($response->code !== 200) {
-                    ray($response->body)->label("Zipkin error")->red();
+                    $this->channel->error($response->body, 'Zipkin error');
 
                     return;
                 }
@@ -94,13 +101,13 @@ class FlareDebugSender implements Sender
         }
 
         if (count($payload['resourceSpans']) !== 1) {
-            ray($payload['resourceSpans'])->label("MORE OR LESS THAN 1 RESOURCE SPANS")->red();
+            $this->channel->error($payload['resourceSpans'], 'More or less than 1 resource spans');
 
             return;
         }
 
         if (count($payload['resourceSpans'][0]['scopeSpans']) !== 1) {
-            ray($payload['resourceSpans'][0]['scopeSpans'])->label("MORE OR LESS THAN 1 SCOPE SPANS")->red();
+            $this->channel->error($payload['resourceSpans'][0]['scopeSpans'], 'More or less than 1 scope spans');
 
             return;
         }
@@ -112,7 +119,7 @@ class FlareDebugSender implements Sender
 
         $resource['attributes'] = $mapper->attributesToPHP($resource['attributes']);
 
-        ray($resource)->label('resource');
+        $this->channel->message($resource, 'resource');
 
         $missingEnd = [];
         $missingParent = [];
@@ -174,14 +181,14 @@ class FlareDebugSender implements Sender
             }
         }
 
-        ray($spans)->label('spans');
+        $this->channel->message($spans, 'spans');
 
         if (count($missingEnd) > 0) {
-            ray($missingEnd)->label("MISSING END SPANS")->red();
+            $this->channel->error($missingEnd, 'Missing end spans');
         }
 
         if (count($missingParent) !== 1) {
-            ray($missingParent)->label("MORE OR LESS THAN 1 ROOT SPANS")->red();
+            $this->channel->error($missingParent, 'More or less than 1 root span');
         }
     }
 
@@ -213,7 +220,7 @@ class FlareDebugSender implements Sender
                 $callback($response);
             });
         } catch (\Throwable $throwable) {
-            ray("Was unable to send to {$endpoint} because: {$throwable->getMessage()}")->red();
+            $this->channel->error("Was unable to send to {$endpoint} because: {$throwable->getMessage()}");
         }
     }
 }

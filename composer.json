@@ -16,13 +16,13 @@
     ],
     "require": {
         "php": "^8.2",
-        "spatie/flare-client-php" : "^2.0",
-        "spatie/ray" : "^1.0"
+        "spatie/flare-client-php" : "^2.0"
     },
     "require-dev": {
         "pestphp/pest": "^3.0",
         "friendsofphp/php-cs-fixer": "^3.21.1",
-        "spatie/ray": "^1.28"
+        "spatie/ray": "^1.28",
+        "illuminate/support" : "^10.0|^11.0|^12.0"
     },
     "autoload": {
         "psr-4": {
