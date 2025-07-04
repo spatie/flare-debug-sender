@@ -21,7 +21,7 @@ class RayDebugChannel implements FlareDebugChannel
         mixed $content,
         ?string $label = null
     ): void {
-        if( $label) {
+        if ($label) {
             ray($content)->label($label)->red();
 
             return;

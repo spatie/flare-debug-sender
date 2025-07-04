@@ -9,7 +9,6 @@ use Spatie\FlareClient\Senders\Support\Response;
 use Spatie\FlareClient\Support\OpenTelemetryAttributeMapper;
 use Spatie\FlareDebugSender\Channels\FlareDebugChannel;
 use Spatie\FlareDebugSender\Channels\RayDebugChannel;
-use Throwable;
 
 class FlareDebugSender implements Sender
 {
@@ -54,7 +53,7 @@ class FlareDebugSender implements Sender
 
     public function post(string $endpoint, string $apiToken, array $payload, Closure $callback): void
     {
-        if($this->printEndpoint) {
+        if ($this->printEndpoint) {
             $this->channel->message($endpoint, 'endpoint');
         }
 
