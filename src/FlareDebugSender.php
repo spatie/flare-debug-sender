@@ -28,6 +28,8 @@ class FlareDebugSender implements Sender
 
     private FlareDebugChannel $channel;
 
+    private CurlSender $curlSender;
+
     public function __construct(
         protected array $config = [
             'passthrough_errors' => false,
@@ -49,6 +51,12 @@ class FlareDebugSender implements Sender
         $this->printFullPayload = $this->config['print_full_payload'] ?? false;
         $this->printEndpoint = $this->config['print_endpoint'] ?? false;
         $this->channel = new ($this->config['channel'] ?? RayDebugChannel::class)(...($this->config['channel_config'] ?? []));
+        $this->curlSender = new CurlSender([
+            'curl_options' => [
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+            ]
+        ]);
     }
 
     public function post(string $endpoint, string $apiToken, array $payload, Closure $callback): void
@@ -215,7 +223,7 @@ class FlareDebugSender implements Sender
         Closure $callback
     ): void {
         try {
-            (new CurlSender())->post($endpoint, $apiToken, $payload, function (Response $response) use ($callback) {
+            $this->curlSender->post($endpoint, $apiToken, $payload, function (Response $response) use ($callback) {
                 $callback($response);
             });
         } catch (\Throwable $throwable) {
