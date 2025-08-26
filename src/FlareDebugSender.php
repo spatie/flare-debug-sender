@@ -58,10 +58,10 @@ class FlareDebugSender implements Sender
         $this->printFullPayload = $this->config['print_full_payload'] ?? false;
         $this->printEndpoint = $this->config['print_endpoint'] ?? false;
         $this->channel = new ($this->config['channel'] ?? RayDebugChannel::class)(...($this->config['channel_config'] ?? []));
-        $this->sender = (new $this->config['sender']() ?? CurlSender::class)($this->config['sender_config'] ?? [
+        $this->sender = new (($this->config['sender'] ?? CurlSender::class))(($this->config['sender_config'] ?? [
             CURLOPT_SSL_VERIFYHOST => 0,
             CURLOPT_SSL_VERIFYPEER => 0,
-        ]);
+        ]));
     }
 
     public function post(string $endpoint, string $apiToken, array $payload, Closure $callback): void
