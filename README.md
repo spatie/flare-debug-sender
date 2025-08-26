@@ -38,6 +38,13 @@ Within your Flare config:
             'print_endpoint' => false,
             'channel' => RayDebugChannel::class,
             'channel_config' => [],
+            'sender' => CurlSender::class,
+            'sender_config' => [
+                'curl_options' => [
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                ],
+            ],
         ],
     ],
 ```
@@ -55,6 +62,8 @@ Open up Ray and start debugging!
 - `print_endpoint`: If set to `true`, the endpoint will be printed.
 - `channel`: The channel to use for debugging. Defaults to `RayDebugChannel`.
 - `channel_config`: The configuration for the channel. Defaults to an empty array.
+- `sender`: The sender to use for sending the payload. Defaults to `CurlSender`.
+- `sender_config`: The configuration for the sender.
 
 ### Channels
 
