@@ -75,7 +75,7 @@ class FlareDebugSender implements Sender
             $this->channel->message($endpoint, 'payload');
         }
 
-        match ($type){
+        match ($type) {
             FlarePayloadType::Error, FlarePayloadType::TestError => $this->handleError($endpoint, $apiToken, $payload, $callback),
             FlarePayloadType::Traces => $this->handleTrace($endpoint, $apiToken, $payload, $callback),
         };
