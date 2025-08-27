@@ -65,7 +65,7 @@ class FlareDebugSender implements Sender
         ]));
     }
 
-    public function post(string $endpoint, string $apiToken, array $payload,  FlarePayloadType $type, Closure $callback): void
+    public function post(string $endpoint, string $apiToken, array $payload, FlarePayloadType $type, Closure $callback): void
     {
         if ($this->printEndpoint) {
             $this->channel->message($endpoint, 'endpoint');
@@ -76,8 +76,8 @@ class FlareDebugSender implements Sender
         }
 
         match ($type) {
-            FlarePayloadType::Error, FlarePayloadType::TestError => $this->handleError($endpoint, $apiToken, $payload, $callback),
-            FlarePayloadType::Traces => $this->handleTrace($endpoint, $apiToken, $payload, $callback),
+            FlarePayloadType::Error, FlarePayloadType::TestError => $this->handleError($endpoint, $apiToken, $payload, $type, $callback),
+            FlarePayloadType::Traces => $this->handleTrace($endpoint, $apiToken, $payload, $type, $callback),
         };
     }
 
@@ -85,10 +85,11 @@ class FlareDebugSender implements Sender
         string $endpoint,
         string $apiToken,
         array $payload,
+        FlarePayloadType $type,
         Closure $callback
     ): void {
         if ($this->passthroughErrors) {
-            $this->passThrough($endpoint, $apiToken, $payload, $callback);
+            $this->passThrough($endpoint, $apiToken, $payload, $type, $callback);
         }
 
         $this->channel->message($payload, 'error');
@@ -98,14 +99,15 @@ class FlareDebugSender implements Sender
         string $endpoint,
         string $apiToken,
         array $payload,
+        FlarePayloadType $type,
         Closure $callback
     ): void {
         if ($this->passthroughTraces) {
-            $this->passThrough($endpoint, $apiToken, $payload, $callback);
+            $this->passThrough($endpoint, $apiToken, $payload, $type, $callback);
         }
 
         if ($this->passthroughZipkin) {
-            $this->passThrough('127.0.0.1:4318/v1/traces', '', $payload, function (Response $response) {
+            $this->passThrough('127.0.0.1:4318/v1/traces', '', $payload, $type, function (Response $response) {
                 if ($response->code !== 200) {
                     $this->channel->error($response->body, 'Zipkin error');
 
@@ -227,10 +229,11 @@ class FlareDebugSender implements Sender
         string $endpoint,
         string $apiToken,
         array $payload,
+        FlarePayloadType $type,
         Closure $callback
     ): void {
         try {
-            $this->sender->post($endpoint, $apiToken, $payload, function (Response $response) use ($callback) {
+            $this->sender->post($endpoint, $apiToken, $payload, $type, function (Response $response) use ($callback) {
                 $callback($response);
             });
         } catch (\Throwable $throwable) {
