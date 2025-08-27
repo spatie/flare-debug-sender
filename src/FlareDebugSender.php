@@ -3,6 +3,7 @@
 namespace Spatie\FlareDebugSender;
 
 use Closure;
+use Spatie\FlareClient\Enums\FlarePayloadType;
 use Spatie\FlareClient\Senders\CurlSender;
 use Spatie\FlareClient\Senders\Sender;
 use Spatie\FlareClient\Senders\Support\Response;
@@ -64,7 +65,7 @@ class FlareDebugSender implements Sender
         ]));
     }
 
-    public function post(string $endpoint, string $apiToken, array $payload, Closure $callback): void
+    public function post(string $endpoint, string $apiToken, array $payload,  FlarePayloadType $type, Closure $callback): void
     {
         if ($this->printEndpoint) {
             $this->channel->message($endpoint, 'endpoint');
@@ -74,11 +75,10 @@ class FlareDebugSender implements Sender
             $this->channel->message($endpoint, 'payload');
         }
 
-        if (! array_key_exists('resourceSpans', $payload)) {
-            $this->handleError($endpoint, $apiToken, $payload, $callback);
-        } else {
-            $this->handleTrace($endpoint, $apiToken, $payload, $callback);
-        }
+        match ($type){
+            FlarePayloadType::Error, FlarePayloadType::TestError => $this->handleError($endpoint, $apiToken, $payload, $callback),
+            FlarePayloadType::Traces => $this->handleTrace($endpoint, $apiToken, $payload, $callback),
+        };
     }
 
     protected function handleError(
