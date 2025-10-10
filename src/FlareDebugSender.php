@@ -77,7 +77,7 @@ class FlareDebugSender implements Sender
         }
 
         if ($this->printFullPayload) {
-            $this->channel->message($payload, MessageType::Other,'payload');
+            $this->channel->message($payload, MessageType::Other, 'payload');
         }
 
         match ($type) {
@@ -122,7 +122,7 @@ class FlareDebugSender implements Sender
         }
 
         if (count($payload['resourceSpans']) !== 1) {
-            $this->channel->message($payload['resourceSpans'],  MessageType::Failure,'More or less than 1 resource spans');
+            $this->channel->message($payload['resourceSpans'],  MessageType::Failure, 'More or less than 1 resource spans');
 
             return;
         }
@@ -140,8 +140,8 @@ class FlareDebugSender implements Sender
 
         $resource['attributes'] = $mapper->attributesToPHP($resource['attributes']);
 
-        if($this->printResource){
-            $this->channel->message($resource, MessageType::Traces,'resource');
+        if ($this->printResource) {
+            $this->channel->message($resource, MessageType::Traces, 'resource');
         }
 
         $missingEnd = [];
@@ -183,7 +183,8 @@ class FlareDebugSender implements Sender
             }
 
             if ($span['parentSpanId'] === null || $span['parentSpanId'] === 0) {
-                $missingParent[] = $mappedSpanIds[$span['spanId']];;
+                $missingParent[] = $mappedSpanIds[$span['spanId']];
+                ;
             }
         }
 
