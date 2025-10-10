@@ -2,6 +2,10 @@
 
 All notable changes to `flare-debug-sender` will be documented in this file.
 
+## 1.0.11 - 2025-10-10
+
+wip
+
 ## 1.0.6 - 2025-08-26
 
 - Allow defining an alternative sender
