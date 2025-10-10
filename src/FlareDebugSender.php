@@ -10,6 +10,7 @@ use Spatie\FlareClient\Senders\Support\Response;
 use Spatie\FlareClient\Support\OpenTelemetryAttributeMapper;
 use Spatie\FlareDebugSender\Channels\FlareDebugChannel;
 use Spatie\FlareDebugSender\Channels\RayDebugChannel;
+use Spatie\FlareDebugSender\Enums\MessageType;
 
 class FlareDebugSender implements Sender
 {
@@ -22,6 +23,8 @@ class FlareDebugSender implements Sender
     private bool $printFullPayload;
 
     private bool $printEndpoint;
+
+    private bool $printResource;
 
     private bool $replaceTracingIds;
 
@@ -40,6 +43,7 @@ class FlareDebugSender implements Sender
             'replace_tracing_times' => true,
             'print_full_payload' => false,
             'print_endpoint' => false,
+            'print_resource' => false,
             'channel' => RayDebugChannel::class,
             'channel_config' => [],
             'sender' => CurlSender::class,
@@ -58,6 +62,7 @@ class FlareDebugSender implements Sender
         $this->replaceTracingTimes = $this->config['replace_tracing_times'] ?? true;
         $this->printFullPayload = $this->config['print_full_payload'] ?? false;
         $this->printEndpoint = $this->config['print_endpoint'] ?? false;
+        $this->printResource = $this->config['print_resource'] ?? false;
         $this->channel = new ($this->config['channel'] ?? RayDebugChannel::class)(...($this->config['channel_config'] ?? []));
         $this->sender = new (($this->config['sender'] ?? CurlSender::class))(($this->config['sender_config'] ?? [
             CURLOPT_SSL_VERIFYHOST => 0,
@@ -68,11 +73,11 @@ class FlareDebugSender implements Sender
     public function post(string $endpoint, string $apiToken, array $payload, FlarePayloadType $type, Closure $callback): void
     {
         if ($this->printEndpoint) {
-            $this->channel->message($endpoint, 'endpoint');
+            $this->channel->message($endpoint, MessageType::Other, 'endpoint');
         }
 
         if ($this->printFullPayload) {
-            $this->channel->message($endpoint, 'payload');
+            $this->channel->message($payload, MessageType::Other,'payload');
         }
 
         match ($type) {
@@ -92,7 +97,7 @@ class FlareDebugSender implements Sender
             $this->passThrough($endpoint, $apiToken, $payload, $type, $callback);
         }
 
-        $this->channel->message($payload, 'error');
+        $this->channel->message($payload, MessageType::Reports,  'error');
     }
 
     protected function handleTrace(
@@ -109,7 +114,7 @@ class FlareDebugSender implements Sender
         if ($this->passthroughZipkin) {
             $this->passThrough('127.0.0.1:4318/v1/traces', '', $payload, $type, function (Response $response) {
                 if ($response->code !== 200) {
-                    $this->channel->error($response->body, 'Zipkin error');
+                    $this->channel->message($response->body, MessageType::Failure, 'Zipkin error');
 
                     return;
                 }
@@ -117,13 +122,13 @@ class FlareDebugSender implements Sender
         }
 
         if (count($payload['resourceSpans']) !== 1) {
-            $this->channel->error($payload['resourceSpans'], 'More or less than 1 resource spans');
+            $this->channel->message($payload['resourceSpans'],  MessageType::Failure,'More or less than 1 resource spans');
 
             return;
         }
 
         if (count($payload['resourceSpans'][0]['scopeSpans']) !== 1) {
-            $this->channel->error($payload['resourceSpans'][0]['scopeSpans'], 'More or less than 1 scope spans');
+            $this->channel->message($payload['resourceSpans'][0]['scopeSpans'], MessageType::Failure, 'More or less than 1 scope spans');
 
             return;
         }
@@ -135,7 +140,9 @@ class FlareDebugSender implements Sender
 
         $resource['attributes'] = $mapper->attributesToPHP($resource['attributes']);
 
-        $this->channel->message($resource, 'resource');
+        if($this->printResource){
+            $this->channel->message($resource, MessageType::Traces,'resource');
+        }
 
         $missingEnd = [];
         $missingParent = [];
@@ -163,20 +170,22 @@ class FlareDebugSender implements Sender
                 }
             }
 
-            if ($span['endTimeUnixNano'] === null || $span['endTimeUnixNano'] === 0) {
-                $missingEnd[] = $i;
-            }
-
-            if ($span['parentSpanId'] === null || $span['parentSpanId'] === 0) {
-                $missingParent[] = $i;
-            }
-
             $type = $spans[$i]['attributes']['flare.span_type'] ?? 'unknown';
 
             $mappedSpanIds[$type][] = $span['spanId'];
         }
 
         $mappedSpanIds = $this->cleanupMappedSpanIds($mappedSpanIds);
+
+        foreach ($spans as $span) {
+            if ($span['endTimeUnixNano'] === null || $span['endTimeUnixNano'] === 0) {
+                $missingEnd[] = $mappedSpanIds[$span['spanId']];
+            }
+
+            if ($span['parentSpanId'] === null || $span['parentSpanId'] === 0) {
+                $missingParent[] = $mappedSpanIds[$span['spanId']];;
+            }
+        }
 
         foreach ($spans as $i => $span) {
             if ($this->replaceTracingTimes) {
@@ -197,14 +206,14 @@ class FlareDebugSender implements Sender
             }
         }
 
-        $this->channel->message($spans, 'spans');
+        $this->channel->message($spans, MessageType::Traces, 'spans');
 
         if (count($missingEnd) > 0) {
-            $this->channel->error($missingEnd, 'Missing end spans');
+            $this->channel->message($missingEnd, MessageType::Failure, 'Missing end spans');
         }
 
         if (count($missingParent) !== 1) {
-            $this->channel->error($missingParent, 'More or less than 1 root span');
+            $this->channel->message($missingParent, MessageType::Failure, 'More or less than 1 root span');
         }
     }
 
@@ -214,10 +223,10 @@ class FlareDebugSender implements Sender
 
         foreach ($mappedSpanIds as $type => $spans) {
             if (count($spans) === 1) {
-                $cleaned[$spans[0]] = $type;
+                $cleaned[$spans[0]] = $type. ' (' . substr($spans[0], 0, 4). ')';
             } else {
                 foreach ($spans as $i => $spanId) {
-                    $cleaned[$spanId] = $type.'_'.($i + 1);
+                    $cleaned[$spanId] = $type.'_'.($i + 1). ' (' . substr($spanId, 0, 4) . ')';
                 }
             }
         }
@@ -237,7 +246,7 @@ class FlareDebugSender implements Sender
                 $callback($response);
             });
         } catch (\Throwable $throwable) {
-            $this->channel->error("Was unable to send to {$endpoint} because: {$throwable->getMessage()}");
+            $this->channel->message("Was unable to send to {$endpoint} because: {$throwable->getMessage()}", MessageType::Failure);
         }
     }
 }

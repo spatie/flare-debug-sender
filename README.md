@@ -24,19 +24,32 @@ composer require spatie/flare-debug-sender
 
 ## Usage
 
-Within your Flare config:
+### For Laravel applications
+
+Ensure Flare's config file is published:
+
+```bash
+php artisan vendor:publish --tag=flare-config
+```
+
+Within your `flare.php` config file:
 
 ```php
+return [
+    // Other contents ..
+
     'sender' => [
         'class' => \Spatie\FlareDebugSender\FlareDebugSender::class,
-        'config' => ['passthrough_errors' => false,
-            'passthrough_traces' => false,
+        'config' => [
+            'passthrough_errors' => true,
+            'passthrough_traces' => true,
             'passthrough_zipkin' => false,
             'replace_tracing_ids' => true,
             'replace_tracing_times' => true,
             'print_full_payload' => false,
             'print_endpoint' => false,
-            'channel' => RayDebugChannel::class,
+            'print_resource' => false,
+            'channel' => \Spatie\FlareDebugSender\Channels\LaravelLogDebugChannel::class,
             'channel_config' => [],
             'sender' => CurlSender::class,
             'sender_config' => [
@@ -47,9 +60,74 @@ Within your Flare config:
             ],
         ],
     ],
+]
+```
+
+### General usage
+
+Within your Flare config:
+
+```php
+$config->sendUsing(
+    \Spatie\FlareDebugSender\FlareDebugSender::class,
+    [
+        'passthrough_errors' => true,
+        'passthrough_traces' => true,
+        'passthrough_zipkin' => false,
+        'replace_tracing_ids' => true,
+        'replace_tracing_times' => true,
+        'print_full_payload' => false,
+        'print_endpoint' => false,
+        'print_resource' => false,
+        'channel' => \Spatie\FlareDebugSender\Channels\FileDebugChannel::class,
+        'channel_config' => [
+            'file' => 'path/to/your/file.log',
+        ],
+        'sender' => CurlSender::class,
+        'sender_config' => [
+            'curl_options' => [
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+            ],
+        ],
+    ]
+)
 ```
 
 Open up Ray and start debugging!
+
+### Ray usage
+
+When using Ray you can use the following configuration:
+
+```php
+return [
+    // Other contents ...
+
+    'sender' => [
+        'class' => \Spatie\FlareDebugSender\FlareDebugSender::class,
+        'config' => [
+            'passthrough_errors' => true,
+            'passthrough_traces' => true,
+            'passthrough_zipkin' => false,
+            'replace_tracing_ids' => true,
+            'replace_tracing_times' => true,
+            'print_full_payload' => false,
+            'print_endpoint' => false,
+            'print_resource' => false,
+            'channel' => \Spatie\FlareDebugSender\Channels\RayDebugChannel::class,
+            'channel_config' => [],
+            'sender' => CurlSender::class,
+            'sender_config' => [
+                'curl_options' => [
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => 0,
+                ],
+            ],
+        ],
+    ],
+]
+```
 
 ### Options
 
@@ -60,6 +138,7 @@ Open up Ray and start debugging!
 - `replace_tracing_times`: If set to `true`, the start and end times of the spans will be replaced with a more readable version.
 - `print_full_payload`: If set to `true`, the full payload will be printed.
 - `print_endpoint`: If set to `true`, the endpoint will be printed.
+- `print_resource`: If set to `true`, the trace resource will be printed.
 - `channel`: The channel to use for debugging. Defaults to `RayDebugChannel`.
 - `channel_config`: The configuration for the channel. Defaults to an empty array.
 - `sender`: The sender to use for sending the payload. Defaults to `CurlSender`.

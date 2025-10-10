@@ -2,15 +2,13 @@
 
 namespace Spatie\FlareDebugSender\Channels;
 
+use Spatie\FlareDebugSender\Enums\MessageType;
+
 interface FlareDebugChannel
 {
     public function message(
         mixed $content,
-        ?string $label = null
-    ): void;
-
-    public function error(
-        mixed $content,
-        ?string $label = null
+        MessageType $type,
+        ?string $label = null,
     ): void;
 }

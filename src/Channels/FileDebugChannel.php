@@ -2,6 +2,8 @@
 
 namespace Spatie\FlareDebugSender\Channels;
 
+use Spatie\FlareDebugSender\Enums\MessageType;
+
 class FileDebugChannel implements FlareDebugChannel
 {
     public function __construct(
@@ -16,22 +18,12 @@ class FileDebugChannel implements FlareDebugChannel
         }
     }
 
-    public function message(mixed $content, ?string $label = null): void
-    {
-        $this->appendToFile($content, $label, 'message');
-    }
-
-    public function error(mixed $content, ?string $label = null): void
-    {
-        $this->appendToFile($content, $label, 'error');
-    }
-
-    protected function appendToFile(mixed $content, ?string $label, string $type): void
+    public function message(mixed $content, MessageType $type, ?string $label = null): void
     {
         $timestamp = date('Y-m-d H:i:s');
 
         $formattedLabel = $label ? " [{$label}]" : '';
-        $formattedType = strtoupper($type);
+        $formattedType = strtoupper($type->label());
 
         $header = "{$timestamp} {$formattedType}{$formattedLabel}:";
         $formattedContent = json_encode($content, JSON_PRETTY_PRINT);
