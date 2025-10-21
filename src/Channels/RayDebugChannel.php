@@ -18,6 +18,6 @@ class RayDebugChannel implements FlareDebugChannel
                 MessageType::Failure => 'red',
                 MessageType::Other => 'gray',
             })
-            ->label($label);
+            ->label($label ?? '-');
     }
 }
