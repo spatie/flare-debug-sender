@@ -12,7 +12,6 @@ use Spatie\FlareDebugSender\Channels\FlareDebugChannel;
 use Spatie\FlareDebugSender\Channels\RayDebugChannel;
 use Spatie\FlareDebugSender\Enums\MessageType;
 
-
 class FlareDebugSender implements Sender
 {
     private bool $passthroughErrors;
@@ -198,7 +197,8 @@ class FlareDebugSender implements Sender
             }
 
             if ($span['parentSpanId'] === null || $span['parentSpanId'] === 0) {
-                $missingParent[] = $mappedSpanIds[$span['spanId']];;
+                $missingParent[] = $mappedSpanIds[$span['spanId']];
+                ;
             }
         }
 
@@ -277,7 +277,6 @@ class FlareDebugSender implements Sender
             $this->channel->message($log, MessageType::Logs, 'log');
         }
     }
-
 
     protected function mapAttributes(
         OpenTelemetryAttributeMapper $mapper,
