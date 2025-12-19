@@ -15,6 +15,7 @@ class RayDebugChannel implements FlareDebugChannel
             ->color(match ($type) {
                 MessageType::Traces => 'blue',
                 MessageType::Reports => 'yellow',
+                MessageType::Logs => 'green',
                 MessageType::Failure => 'red',
                 MessageType::Other => 'gray',
             })

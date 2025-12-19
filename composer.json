@@ -14,9 +14,10 @@
             "role": "Developer"
         }
     ],
+    "repositories" : [{"type" : "path", "url" : "../flare-client-php"}],
     "require": {
         "php": "^8.2",
-        "spatie/flare-client-php" : "^2.1"
+        "spatie/flare-client-php" : "@dev"
     },
     "require-dev": {
         "pestphp/pest": "^3.0",
