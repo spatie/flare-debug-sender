@@ -16,7 +16,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "spatie/flare-client-php" : "^2.1"
+        "spatie/flare-client-php" : "^3.0"
     },
     "require-dev": {
         "pestphp/pest": "^3.0",

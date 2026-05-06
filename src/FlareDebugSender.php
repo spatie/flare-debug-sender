@@ -3,7 +3,7 @@
 namespace Spatie\FlareDebugSender;
 
 use Closure;
-use Spatie\FlareClient\Enums\FlarePayloadType;
+use Spatie\FlareClient\Enums\FlareEntityType;
 use Spatie\FlareClient\Senders\CurlSender;
 use Spatie\FlareClient\Senders\Sender;
 use Spatie\FlareClient\Senders\Support\Response;
@@ -12,11 +12,14 @@ use Spatie\FlareDebugSender\Channels\FlareDebugChannel;
 use Spatie\FlareDebugSender\Channels\RayDebugChannel;
 use Spatie\FlareDebugSender\Enums\MessageType;
 
+
 class FlareDebugSender implements Sender
 {
     private bool $passthroughErrors;
 
     private bool $passthroughTraces;
+
+    private bool $passthroughLogs;
 
     private bool $passthroughZipkin;
 
@@ -57,6 +60,7 @@ class FlareDebugSender implements Sender
     ) {
         $this->passthroughErrors = $this->config['passthrough_errors'] ?? false;
         $this->passthroughTraces = $this->config['passthrough_traces'] ?? false;
+        $this->passthroughLogs = $this->config['passthrough_logs'] ?? false;
         $this->passthroughZipkin = $this->config['passthrough_zipkin'] ?? false;
         $this->replaceTracingIds = $this->config['replace_tracing_ids'] ?? true;
         $this->replaceTracingTimes = $this->config['replace_tracing_times'] ?? true;
@@ -70,8 +74,14 @@ class FlareDebugSender implements Sender
         ]));
     }
 
-    public function post(string $endpoint, string $apiToken, array $payload, FlarePayloadType $type, Closure $callback): void
-    {
+    public function post(
+        string $endpoint,
+        string $apiToken,
+        array $payload,
+        FlareEntityType $type,
+        bool $test,
+        Closure $callback,
+    ): void {
         if ($this->printEndpoint) {
             $this->channel->message($endpoint, MessageType::Other, 'endpoint');
         }
@@ -81,8 +91,9 @@ class FlareDebugSender implements Sender
         }
 
         match ($type) {
-            FlarePayloadType::Error, FlarePayloadType::TestError => $this->handleError($endpoint, $apiToken, $payload, $type, $callback),
-            FlarePayloadType::Traces => $this->handleTrace($endpoint, $apiToken, $payload, $type, $callback),
+            FlareEntityType::Errors, => $this->handleError($endpoint, $apiToken, $payload, $type, $test, $callback),
+            FlareEntityType::Traces => $this->handleTrace($endpoint, $apiToken, $payload, $type, $test, $callback),
+            FlareEntityType::Logs => $this->handleLogs($endpoint, $apiToken, $payload, $type, $test, $callback),
         };
     }
 
@@ -90,29 +101,33 @@ class FlareDebugSender implements Sender
         string $endpoint,
         string $apiToken,
         array $payload,
-        FlarePayloadType $type,
+        FlareEntityType $type,
+        bool $test,
         Closure $callback
     ): void {
         if ($this->passthroughErrors) {
-            $this->passThrough($endpoint, $apiToken, $payload, $type, $callback);
+            $this->passThrough($endpoint, $apiToken, $payload, $type, $test, $callback);
         }
 
-        $this->channel->message($payload, MessageType::Reports,  'error');
+        uksort($payload['attributes'], fn ($a, $b) => strnatcmp($a, $b));
+
+        $this->channel->message($payload, MessageType::Reports, 'error');
     }
 
     protected function handleTrace(
         string $endpoint,
         string $apiToken,
         array $payload,
-        FlarePayloadType $type,
+        FlareEntityType $type,
+        bool $test,
         Closure $callback
     ): void {
         if ($this->passthroughTraces) {
-            $this->passThrough($endpoint, $apiToken, $payload, $type, $callback);
+            $this->passThrough($endpoint, $apiToken, $payload, $type, $test, $callback);
         }
 
         if ($this->passthroughZipkin) {
-            $this->passThrough('127.0.0.1:4318/v1/traces', '', $payload, $type, function (Response $response) {
+            $this->passThrough('127.0.0.1:4318/v1/traces', '', $payload, $type, $test, function (Response $response) {
                 if ($response->code !== 200) {
                     $this->channel->message($response->body, MessageType::Failure, 'Zipkin error');
 
@@ -122,7 +137,7 @@ class FlareDebugSender implements Sender
         }
 
         if (count($payload['resourceSpans']) !== 1) {
-            $this->channel->message($payload['resourceSpans'],  MessageType::Failure, 'More or less than 1 resource spans');
+            $this->channel->message($payload['resourceSpans'], MessageType::Failure, 'More or less than 1 resource spans');
 
             return;
         }
@@ -138,7 +153,7 @@ class FlareDebugSender implements Sender
 
         $mapper = new OpenTelemetryAttributeMapper();
 
-        $resource['attributes'] = $mapper->attributesToPHP($resource['attributes']);
+        $resource['attributes'] = $this->mapAttributes($mapper, $resource['attributes']);
 
         if ($this->printResource) {
             $this->channel->message($resource, MessageType::Traces, 'resource');
@@ -152,7 +167,7 @@ class FlareDebugSender implements Sender
         $mappedSpanIds = [];
 
         foreach ($spans as $i => $span) {
-            $spans[$i]['attributes'] = $mapper->attributesToPHP($span['attributes']);
+            $spans[$i]['attributes'] = $this->mapAttributes($mapper, $span['attributes']);
 
             if ($span['startTimeUnixNano'] < $minimalTime) {
                 $minimalTime = $span['startTimeUnixNano'];
@@ -163,7 +178,7 @@ class FlareDebugSender implements Sender
             }
 
             foreach ($span['events'] as $eventIndex => $event) {
-                $spans[$i]['events'][$eventIndex]['attributes'] = $mapper->attributesToPHP($event['attributes']);
+                $spans[$i]['events'][$eventIndex]['attributes'] = $this->mapAttributes($mapper, $event['attributes']);
 
                 if ($event['timeUnixNano'] < $minimalTime) {
                     $minimalTime = $event['timeUnixNano'];
@@ -183,8 +198,7 @@ class FlareDebugSender implements Sender
             }
 
             if ($span['parentSpanId'] === null || $span['parentSpanId'] === 0) {
-                $missingParent[] = $mappedSpanIds[$span['spanId']];
-                ;
+                $missingParent[] = $mappedSpanIds[$span['spanId']];;
             }
         }
 
@@ -218,16 +232,75 @@ class FlareDebugSender implements Sender
         }
     }
 
+    protected function handleLogs(
+        string $endpoint,
+        string $apiToken,
+        array $payload,
+        FlareEntityType $type,
+        bool $test,
+        Closure $callback
+    ): void {
+        ray($payload);
+
+        if ($this->passthroughLogs) {
+            $this->passThrough($endpoint, $apiToken, $payload, $type, $test, $callback);
+        }
+
+        if (count($payload['resourceLogs']) !== 1) {
+            $this->channel->message($payload['resourceLogs'], MessageType::Failure, 'More or less than 1 resource logs');
+
+            return;
+        }
+
+        if (count($payload['resourceLogs'][0]['scopeLogs']) !== 1) {
+            $this->channel->message($payload['resourceLogs'][0]['scopeLogs'], MessageType::Failure, 'More or less than 1 scope logs');
+
+            return;
+        }
+
+        $resource = $payload['resourceLogs'][0]['resource'];
+        $logs = $payload['resourceLogs'][0]['scopeLogs'][0]['logRecords'];
+
+        $mapper = new OpenTelemetryAttributeMapper();
+
+        $resource['attributes'] = $this->mapAttributes($mapper, $resource['attributes']);
+
+        if ($this->printResource) {
+            $this->channel->message($resource, MessageType::Logs, 'resource');
+        }
+
+        foreach ($logs as $log) {
+            if (array_key_exists('attributes', $log)) {
+                $log['attributes'] = $this->mapAttributes($mapper, $log['attributes']);
+            }
+
+            $this->channel->message($log, MessageType::Logs, 'log');
+        }
+    }
+
+
+    protected function mapAttributes(
+        OpenTelemetryAttributeMapper $mapper,
+        array $attributes
+    ): array {
+
+        $attributes = $mapper->attributesToPHP($attributes);
+
+        uksort($attributes, fn ($a, $b) => strnatcmp($a, $b));
+
+        return $attributes;
+    }
+
     protected function cleanupMappedSpanIds($mappedSpanIds): array
     {
         $cleaned = [];
 
         foreach ($mappedSpanIds as $type => $spans) {
             if (count($spans) === 1) {
-                $cleaned[$spans[0]] = $type. ' (' . substr($spans[0], 0, 4). ')';
+                $cleaned[$spans[0]] = $type.' ('.substr($spans[0], 0, 4).')';
             } else {
                 foreach ($spans as $i => $spanId) {
-                    $cleaned[$spanId] = $type.'_'.($i + 1). ' (' . substr($spanId, 0, 4) . ')';
+                    $cleaned[$spanId] = $type.'_'.($i + 1).' ('.substr($spanId, 0, 4).')';
                 }
             }
         }
@@ -239,11 +312,12 @@ class FlareDebugSender implements Sender
         string $endpoint,
         string $apiToken,
         array $payload,
-        FlarePayloadType $type,
+        FlareEntityType $type,
+        bool $test,
         Closure $callback
     ): void {
         try {
-            $this->sender->post($endpoint, $apiToken, $payload, $type, function (Response $response) use ($callback) {
+            $this->sender->post($endpoint, $apiToken, $payload, $type, $test, function (Response $response) use ($callback) {
                 $callback($response);
             });
         } catch (\Throwable $throwable) {
