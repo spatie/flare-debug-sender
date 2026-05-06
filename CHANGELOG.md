@@ -2,6 +2,10 @@
 
 All notable changes to `flare-debug-sender` will be documented in this file.
 
+## 2.0.0 - 2026-05-06
+
+- Release for the v3 versions of the Flare packages
+
 ## 1.0.12 - 2025-10-21
 
 wip
