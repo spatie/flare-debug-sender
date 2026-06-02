@@ -1,7 +1,7 @@
 # Debugging tool for Flare payloads
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/spatie/flare-debug-sender.svg?style=flat-square)](https://packagist.org/packages/spatie/flare-debug-sender)
-[![Tests](https://img.shields.io/github/actions/workflow/status/spatie/flare-debug-sender/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/spatie/flare-debug-sender/actions/workflows/run-tests.yml)
+[![Tests](https://github.com/spatie/flare-debug-sender/actions/workflows/run-tests.yml/badge.svg)](https://github.com/spatie/flare-debug-sender/actions/workflows/run-tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/spatie/flare-debug-sender.svg?style=flat-square)](https://packagist.org/packages/spatie/flare-debug-sender)
 
 This is a debug sender for Flare payloads, mostly used for internal testing purposes.
