@@ -8,7 +8,7 @@ This is a debug sender for Flare payloads, mostly used for internal testing purp
 
 ## Support us
 
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/flare-debug-sender.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/flare-debug-sender)
+[<img src="https://spatie.be/github-ad-image/flare-debug-sender.jpg" width="419px" />](https://spatie.be/github-ad-click/flare-debug-sender)
 
 We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
 
