@@ -167,8 +167,16 @@ By default, the file will be written to `flare-debug-sender.log` in the root of 
 
 ## Testing
 
+The development dependencies require PHP 8.4.1 or later. The package's runtime requirement remains PHP 8.2 or later.
+
 ```bash
 composer test
+```
+
+To generate coverage reports, enable a coverage driver such as Xdebug and run:
+
+```bash
+XDEBUG_MODE=coverage composer test-coverage
 ```
 
 ## Changelog

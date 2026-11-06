@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
         php: [8.4]
@@ -44,6 +44,12 @@ jobs:
 
       - name: Install dependencies
         run: composer update --${{ matrix.stability }} --prefer-dist --no-interaction
+
+      - name: Validate dependencies
+        run: |
+          composer validate --strict
+          composer check-platform-reqs
+          composer audit
 
       - name: List Installed Dependencies
         run: composer show -D
